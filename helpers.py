@@ -57,7 +57,12 @@ def add_voteshare_data(gdf, voteshares_file_path=None):
     If voteshares_file_path is None, 
     then voteshares are all set to 0.5. 
 
-    Returns the new GeoDataFrame with voteshare data. 
+    Returns the new GeoDataFrame with voteshare data, 
+    including the given voteshares and 
+    computed votes columns (voteshare times population). 
+    Since this requires the gdf to have a 'population' column,
+    `add_population_data` should be called first. 
+
     The given gdf is modified. 
     """
     if voteshares_file_path is None:
@@ -71,6 +76,9 @@ def add_voteshare_data(gdf, voteshares_file_path=None):
     voteshare_df.set_index('GEOID', inplace=True)
 
     gdf = gdf.join(voteshare_df)
+    gdf['gop_votes'] = gdf['gop_voteshare'] * gdf['population']
+    gdf['dem_votes'] = gdf['dem_voteshare'] * gdf['population']
+
     return gdf
 
 
@@ -111,10 +119,19 @@ def build_partition(gdf, assignment_file_path):
     assignment_df.set_index('GEOID', inplace=True)
     gdf = gdf.join(assignment_df)
     graph.add_data(gdf)
-    # import pdb; pdb.set_trace()
+
+    # Make sure population and votes columns exist even if data is missing
+    if 'population' not in gdf.columns:
+        gdf['population'] = 1.
+    if 'gop_votes' not in gdf.columns:
+        gdf['gop_votes'] = 0
+    if 'dem_votes' not in gdf.columns:
+        gdf['dem_votes'] = 0
 
     return gerrychain.Partition(graph, assignment, updaters={
-        'population': gerrychain.updaters.Tally('population')
+        'population': gerrychain.updaters.Tally('population'), 
+        'gop_votes': gerrychain.updaters.Tally('gop_votes'),
+        'dem_votes': gerrychain.updaters.Tally('dem_votes')
         }) # The updater {'cut_edges': cut_edges} is included by default
 
 
@@ -373,6 +390,112 @@ def label_num_descendants(tree, root):
     return
 
 
+# District plan metrics
+def compute_SL_index(partition):
+    """
+    Input is a gerrychain.Partition object 
+    with voteshare and population data. 
+
+    It is assumed that `add_population_data` and 
+    `add_voteshare_data` have been called on 
+    the given partition's GeoDataFrame. 
+
+    Returns the Sainte-Laguë Index of 
+    the districting plan. 
+
+    Reference: M. Gallagher. "Proportionality, 
+    Disproportionality and Electoral Systems." 1991.
+    """
+    k = len(partition.parts)
+    gop_vote_shares = [partition['gop_votes'][i] / (partition['gop_votes'][i] + partition['dem_votes'][i]) for i in range(1, k + 1)]
+    print('\tGOP vote shares:', np.round(gop_vote_shares, decimals=4))
+    gop_seat_share = sum((v >= 0.5) for v in gop_vote_shares) / k
+    dem_seat_share = 1 - gop_seat_share
+    
+    gop_total_votes = sum(partition['gop_votes'][i] for i in range(1, k + 1))
+    dem_total_votes = sum(partition['dem_votes'][i] for i in range(1, k + 1))
+    gop_vote_share = gop_total_votes / (gop_total_votes + dem_total_votes)
+    dem_vote_share = 1 - gop_vote_share
+    
+    return SL_helper(seat_shares_percent=[gop_seat_share, dem_seat_share], 
+        vote_shares_percent=[gop_vote_share, dem_vote_share])
+
+
+def SL_helper(seat_shares_percent, vote_shares_percent):
+    """Computes the Sainte-Laguë Index given party seat-shares and 
+    vote-shares as percentages.
+    Reference: M. Gallagher. "Proportionality, Disproportionality 
+        and Electoral Systems." 1991.
+    """
+    total = 0
+    num_parties_seats = len(seat_shares_percent)
+    num_parties_votes = len(vote_shares_percent)
+
+    if num_parties_seats != num_parties_votes:
+        raise InputError('Length of seat_shares_percent is {0}, but length of vote_shares_percent is {1}.'.format(num_parties_seats, m_parties_votes))
+    for i in range(num_parties_seats):
+        diff = seat_shares_percent[i] - vote_shares_percent[i]
+        total += (diff ** 2 / vote_shares_percent[i])
+
+    return total
+
+
+def compute_efficiency_gap(partition):
+    """
+    Input is a gerrychain.Partition object 
+    with voteshare and population data. 
+
+    It is assumed that `add_population_data` and 
+    `add_voteshare_data` have been called on 
+    the given partition's GeoDataFrame. 
+
+    Returns the efficiency gap of 
+    the districting plan from the GOP perspective:
+    (gop_wasted_votes - dem_wasted_votes) / total_votes.
+
+    Reference: Stephanopoulos and McGhee. 
+    "Partisan gerrymandering and the efficiency gap." 2015.
+    """
+    k = len(partition.parts)
+    gop_wasted_votes = 0
+    dem_wasted_votes = 0
+
+    for i in range(1, k + 1):
+        gop_votes = partition['gop_votes'][i]
+        dem_votes = partition['dem_votes'][i]
+        if gop_votes > dem_votes:
+            gop_wasted_votes += gop_votes - 0.5 * (gop_votes + dem_votes)
+            dem_wasted_votes += dem_votes
+        else:
+            gop_wasted_votes += gop_votes
+            dem_wasted_votes += dem_votes - 0.5 * (gop_votes + dem_votes)
+
+    # Using total population as a proxy for total_votes for simplicity
+    total_votes = partition.graph.data.population.sum()
+    return (gop_wasted_votes - dem_wasted_votes) / total_votes
+
+
+def compute_mm_gap(partition):
+    """
+    Input is a gerrychain.Partition object 
+    with voteshare and population data. 
+
+    It is assumed that `add_population_data` and 
+    `add_voteshare_data` have been called on 
+    the given partition's GeoDataFrame. 
+
+    Returns the mean-median gap of 
+    the districting plan from the GOP perspective:
+    gop_mean_voteshare - gop_median_voteshare.
+
+    Reference: DeFord et al. 
+    "Implementing partisan symmetry: Problems and paradoxes." 2020. 
+    """
+    k = len(partition.parts)
+    gop_vote_shares = [partition['gop_votes'][i] / (partition['gop_votes'][i] + partition['dem_votes'][i]) for i in range(1, k + 1)]
+    return np.mean(gop_vote_shares) - np.median(gop_vote_shares)
+
+
 if __name__ == "__main__":
     tracts_fname = 'data/tl_2013_55_tract.zip'
     dem_assignment_fname = 'data/wi_gerrymander_dem.csv'
@@ -380,8 +503,8 @@ if __name__ == "__main__":
     population_fname = 'data/wi_tract_populations_census_2010.csv'
     voteshares_fname = 'data/wi_voteshares.csv'
 
-    dem_plan = helpers.build_district_plan(tracts_fname, dem_assignment_fname, population_fname, voteshares_fname)
-    gop_plan = helpers.build_district_plan(tracts_fname, gop_assignment_fname, population_fname, voteshares_fname)
+    dem_plan = build_district_plan(tracts_fname, dem_assignment_fname, population_fname, voteshares_fname)
+    gop_plan = build_district_plan(tracts_fname, gop_assignment_fname, population_fname, voteshares_fname)
 
     # Test GerryChain's built-in plot features (using matplotlib)
     dem_plan.plot()

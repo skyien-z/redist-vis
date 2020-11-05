@@ -1,4 +1,4 @@
-GEOID,gop_voteshare,dem_voteshare
+GEOID,gop_voteshare,dem_voteshare,NOTE:voteshares are averages of 2012/2016 presidential election data
 55037190100,0.686312524,0.313687476
 55037190200,0.686312524,0.313687476
 55019950300,0.606687597,0.393312403
