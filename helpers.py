@@ -82,21 +82,26 @@ def add_voteshare_data(gdf, voteshares_file_path=None):
     return gdf
 
 
-def build_partition(gdf, assignment_file_path):
+def build_partition(gdf, assignment_file_path=None, assignment_dict=None):
     """
     Loads a CSV representing a district plan as 
-    a mapping of 'GEOID' to 'district'. 
+    a mapping of 'GEOID' to 'district', 
+    or loads a district plan from an assignment dictionary 
+    mapping GEOIDs to district indices. 
 
     Creates a gerrychain.Partition object using
     the graph of the given GeoDataFrame and 
     the assignment mapping. 
     """
-    with open(assignment_file_path, 'r') as file:
-        reader = csv.reader(file)
-        data = list(reader)
-
-    headers = data.pop(0)
-    assignment = {data[i][0]: int(data[i][1]) for i in range(len(data))}
+    if assignment_file_path is not None:
+        with open(assignment_file_path, 'r') as file:
+            reader = csv.reader(file)
+            data = list(reader)
+        headers = data.pop(0)
+        assignment = {data[i][0]: int(data[i][1]) for i in range(len(data))}
+    else:
+        assert(assignment_dict is not None)
+        assignment = assignment_dict
 
     graph = gerrychain.Graph.from_geodataframe(gdf)
     nodes = list(graph.nodes)
