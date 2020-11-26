@@ -3,6 +3,8 @@ import geopandas
 import streamlit as st
 import pydeck as pdk
 
+st.title('Possible Wisconsin Districting Plans')
+
 district_slider = st.slider('Select a district plan', 1, 83, 1)
 current_gdf = geopandas.read_file('geojson/wi_map_plan_' + str(district_slider) + '.geojson')
 
@@ -24,3 +26,18 @@ r = pdk.Deck(layers=[geojson],
             )
 
 st.pydeck_chart(r)
+
+# Displays metrics on app sidebar
+st.sidebar.subheader('Metrics for Plan ' + str(district_slider) + ":")
+st.sidebar.text('SL Index: ' + str(current_gdf.loc[1]['SL_index']))
+st.sidebar.text('Efficiency Gap: ' + str(current_gdf.loc[1]['efficiency_gap']))
+st.sidebar.text('Mean-Median Gap: ' + str(current_gdf.loc[1]['mm_gap']))
+st.sidebar.text('')
+
+st.sidebar.text('Party Votes per District:')
+votes_data_df = current_gdf.drop(columns=['district', 'population', 'dem_voteshare', 'gop_voteshare', 'geometry', 'SL_index', 'efficiency_gap', 'mm_gap'])
+st.sidebar.line_chart(votes_data_df, 200, 200)
+
+st.sidebar.text('\n Party Voteshare per District:')
+voteshare_data_df = current_gdf.drop(columns=['district', 'population', 'dem_votes', 'gop_votes', 'geometry', 'SL_index', 'efficiency_gap', 'mm_gap'])
+st.sidebar.line_chart(voteshare_data_df, 200, 200)
