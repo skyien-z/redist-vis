@@ -14,7 +14,7 @@ current_gdf = geopandas.read_file('geojson/wi_map_plan_' + str(district_slider) 
 
 INITIAL_VIEW_STATE = pdk.ViewState(latitude=44.8, longitude=-89.483492, zoom=5.4, max_zoom=16, pitch=0, bearing=0)
 
-current_gdf['color'] = [[178, 34, 34],[100, 149, 237],[153, 50, 204],[210,105,30],[154,205,50],[255, 160, 122],[25,50,100],[0,255,255],[255,255,0]]
+current_gdf['color'] = [[80, 80, 80],[100, 149, 237],[153, 50, 204],[210,105,30],[154,205,50],[255, 160, 122],[25,50,100],[0,255,255],[255,255,0]]
 current_gdf['dem_votes'] = current_gdf['dem_votes'].astype(int)
 current_gdf['gop_votes'] = current_gdf['gop_votes'].astype(int)
 
@@ -39,9 +39,9 @@ st.pydeck_chart(r)
 
 st.sidebar.subheader('Metrics for Plan ' + str(district_slider) + ":")
 
-metric_descriptions = [ 'SL Index: ' + str(current_gdf.loc[1]['SL_index']),
-                        'Efficiency Gap: ' + str(current_gdf.loc[1]['efficiency_gap']),
-                        'Mean-Median Gap: ' + str(current_gdf.loc[1]['mm_gap'])]
+metric_descriptions = [ 'SL Index: ' + str(round(current_gdf.loc[1]['SL_index'], 7)),
+                        'Efficiency Gap: ' + str(round(current_gdf.loc[1]['efficiency_gap'], 7)),
+                        'Mean-Median Gap: ' + str(round(current_gdf.loc[1]['mm_gap'], 7))]
 
 st.sidebar.text('')
 
