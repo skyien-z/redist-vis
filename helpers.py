@@ -82,21 +82,27 @@ def add_voteshare_data(gdf, voteshares_file_path=None):
     return gdf
 
 
-def build_partition(gdf, assignment_file_path):
+def build_partition(gdf, assignment_file_path=None, assignment_dict=None):
     """
     Loads a CSV representing a district plan as 
-    a mapping of 'GEOID' to 'district'. 
+    a mapping of 'GEOID' to 'district', 
+    or loads a district plan from an assignment dictionary 
+    mapping GEOIDs to district indices. 
 
     Creates a gerrychain.Partition object using
     the graph of the given GeoDataFrame and 
     the assignment mapping. 
     """
-    with open(assignment_file_path, 'r') as file:
-        reader = csv.reader(file)
-        data = list(reader)
-
-    headers = data.pop(0)
-    assignment = {data[i][0]: int(data[i][1]) for i in range(len(data))}
+    if assignment_file_path is not None:
+        with open(assignment_file_path, 'r') as file:
+            reader = csv.reader(file)
+            data = list(reader)
+        headers = data.pop(0)
+        assignment = {data[i][0]: int(data[i][1]) for i in range(len(data))}
+    else:
+        assert(assignment_dict is not None)
+        assignment = assignment_dict
+        headers = ['GEOID', 'district']
 
     graph = gerrychain.Graph.from_geodataframe(gdf)
     nodes = list(graph.nodes)
@@ -506,15 +512,27 @@ if __name__ == "__main__":
     dem_plan = build_district_plan(tracts_fname, dem_assignment_fname, population_fname, voteshares_fname)
     gop_plan = build_district_plan(tracts_fname, gop_assignment_fname, population_fname, voteshares_fname)
 
-    # Test GerryChain's built-in plot features (using matplotlib)
-    dem_plan.plot()
-    plt.axis('off')
-    plt.title('Democratic Party Gerrymander')
-    plt.show()
+    # # Test GerryChain's built-in plot features (using matplotlib)
+    # dem_plan.plot()
+    # plt.axis('off')
+    # plt.title('Democratic Party Gerrymander')
+    # plt.show()
 
-    gop_plan.plot()
+    # gop_plan.plot()
+    # plt.axis('off')
+    # plt.title('Republican Party Gerrymander')
+    # plt.show()
+
+    # Test alternate build_partition
+    tracts_fname = tracts_fname if 'zip://' in tracts_fname else 'zip://' + tracts_fname
+    gdf = load_shapefile(tracts_fname)
+    gdf = add_population_data(gdf, population_fname)
+    gdf = add_voteshare_data(gdf, voteshares_fname)
+    plan = build_partition(gdf, assignment_dict={i: random.randint(1, 3) for i in gdf.index})
+
+    plan.plot()
     plt.axis('off')
-    plt.title('Republican Party Gerrymander')
+    plt.title('Randomly generated map built from assignment dictionary')
     plt.show()
 
     # TODO: add more tests
