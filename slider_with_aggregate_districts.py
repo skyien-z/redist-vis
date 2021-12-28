@@ -29,7 +29,7 @@ geojson = pdk.Layer(
 
 r = pdk.Deck(layers=[geojson],
             initial_view_state=INITIAL_VIEW_STATE,
-            mapbox_key='pk.eyJ1Ijoic2t5aWVuLXoiLCJhIjoiY2tnODJiaXRyMDl1OTJzbWtveTRsaGMwOSJ9.zFW9CBqmz3PAJ74FLRZRBA',
+            api_keys={"mapbox": 'pk.eyJ1Ijoic2t5aWVuLXoiLCJhIjoiY2tnODJiaXRyMDl1OTJzbWtveTRsaGMwOSJ9.zFW9CBqmz3PAJ74FLRZRBA'},
             tooltip={'text': 'District: {district}\nPopulation: {population}\nDem Votes: {dem_votes}\nGOP Votes: {gop_votes}'}
             )
 
