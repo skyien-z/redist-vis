@@ -6,6 +6,8 @@ Political Redistricting is the process of drawing electoral district maps; the c
 ## Aim
 We have created an interactive mapping of 83 distinct district plans (each district plan one unit different from the one before and after it) and calculated some “fairness” metrics for each district plan in order to better visualize the concept of political redistricting. Traditionally, the courts have held that if one district plan has “fairness” metrics that vary significantly from the “fairness” metrics of the majority of potential district plans, it is a biased (and therefore gerrymandered) plan that needs to be altered.
 
+## Demo
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/skyien-z/redist-vis/slider_with_aggregate_districts.py)
 
 ## Metric Descriptions:
 ### Efficiency Gap
@@ -16,6 +18,3 @@ As the name suggests, the mean-median gap is the difference between the mean of 
 
 ### Sainte-Lague Index of Disproportionality
 The Sainte-Lague Index measures the difference in proportion between the seat share and vote share of a party. A party’s seat-share refers to the proportion of seats a party got out of the total number of seats, and a party’s vote-share refers to the proportion of votes a party got out of the total number of votes cast. Ideally, these two proportions should be equal or close to equal. This means that generally the lower the Sainte-Lague index, the better. It is also worth noting that there are many methods for computing this disproportionality, but according to Trinity College Political Science Professor, Michael Gallagher, in the paper Proportionality, disproportionality and electoral systems, the Sainte-Lague method is theoretically “probably the soundest of all measures.”
-
-
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/skyien-z/redist-vis/slider_with_aggregate_districts.py)
